@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+           <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TP1: Création d'un mini jeu, RedneckMania</title>
+
+        <style>
+            canvas {
+                border: 1px solid black;
+                cursor: pointer;
+                background: linear-gradient(to bottom, #222222, #eeeeee);
+            }
+        </style>
+    </head>
+
+    <body>
+        <!-- Créer la balise canvas -->
+        <canvas width="1000" height="500"></canvas>
+
+        <script>
+            //Récupérer la balise canvas et définir son contexte de dessin en 2d
+            let leCanvas = document.querySelector("canvas");
+            let ctx = leCanvas.getContext("2d");
+
+            //////////////////////Description: ///////////////////////////////
+
+            /*Dans RedneckMania, le joueur incarne un redneck du sud du Texas qui fabrique son propre moonshine or la police a eu vent de ses opérations.
+            Notre redneck est donc forcé de ramasser le plus de patates possible pour finir sa dernière production 
+            sans que la police n'ait la possibilité de le prendre la main dans le sac. Pour ce faire, le joueur a donc la tâche de ramasser 30 patates sans
+            que les forces de l'ordre ne le touche, lorsque le joueur se fait toucher par la police il perds. Également, le joueur doit éviter les grenades incapacitantes que lui envoie la police.
+            Autrement, si le joueur arrive à ramasser 30 patates, il gagne.*/
+
+
+            /////////////////////////\\\\\\\\\\\\\\\\\\\\\DÉCLARATION DES OBJETS\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\/////////////////////////
+
+            //l'objet du redneck!!!
+            let redneck = {
+                img: new Image(), //image
+                urlImage: "images/redneck_Repos.png", //url de l'image de départ
+                x: 0, //Position sur l'axe des x
+                y: 0, //Position sur l'axe des y
+                largeur: 134, //Largeur d'une vignette du redneck
+                hauteur: 145, //Hauteur d'une vignette du redneck
+                indexVignette: 0, //Première vignette
+                nbVignettes: 6, //Nombre de vignettes
+                sourceX: 0, //Coordonnée x de la vignette à afficher
+                vitesseX: 4, //Vitesse horizontale
+                vitesseY: 4,//Vitesse verticale
+            }
+
+            //l'objet du redneck (LE BAS DE SON CORPS POUR LES COLLISIONS)
+            let redneckBas = {
+                img: new Image(), //image
+                urlImage: "images/redneck_Repos_Bas.png", //url de l'image de départ
+                x: 0, //Position sur l'axe des x
+                y: 0, //Position sur l'axe des y
+                largeur: 134, //Largeur d'une vignette du redneck
+                hauteur: 62, //Hauteur d'une vignette du redneck
+                indexVignette: 0, //Première vignette
+                nbVignettes: 6, //Nombre de vignettes
+                sourceX: 0, //Coordonnée x de la vignette à afficher
+                vitesseX: 4, //Vitesse horizontale
+                vitesseY: 4,//Vitesse verticale
+            }
+
+            //Charger l'image du bas du redneck (au repos à la droite)
+            redneckBas.img.src = redneckBas.urlImage;
+            //Le positionner sur l'axe des X et des Y au centre en en bas du canvas
+            redneckBas.x = (leCanvas.width - redneckBas.largeur) / 4;
+            redneckBas.y = (leCanvas.height - redneckBas.hauteur)/1.16;
+
+            //Charger l'image initiale du redneck (au repos à la droite)
+            redneck.img.src = redneck.urlImage;
+            //Le positionner sur l'axe des X et des Y au centre en en bas du canvas
+            redneck.x = (leCanvas.width - redneck.largeur) / 4;
+            redneck.y = (leCanvas.height - redneck.hauteur)/1.2;
+
+            //Objets patates
+            let patate = {
+                img: new Image(), //Image
+                urlImage: "images/patate.png", //liens ver l'image
+                x: leCanvas.width/1.5, //position x des patates
+                y: leCanvas.height/1.5, //position y des patates
+                largeur: 50, //largeur de l'image des patates
+                hauteur: 30, //hauteur de l'image des patates
+            }
+
+             //objet police
+             let police = {
+                img: new Image(), //Image
+                urlImage: "images/police.png", //Liens vers l'image de la police
+                x: 1000, //position x, au départ, du policier
+                y: 360, //position y, au départ, du policier
+                largeur: 120, //largeur d'une vignette du "sprite sheet" de la police
+                hauteur: 145, //hauteur du "sprite sheet" de la police
+                indexVignette: 0, //première vignette
+                nbVignettes: 7, //nombre total de vignettes
+                sourceX: 0, //Coordonnées x de la vignette à afficher
+                vitesseX: 3, //Vitesse sur l'axe des x
+                vitesseY: 3, //Vitesse sur l'axe des y
+
+            }
+
+            //Charger image police
+            police.img.src = police.urlImage;
+
+            //Position de base sur l'axe des X et des Y pour le policier (et le bas de son corps qui suit le "sprite sheet" principal histoire que les deux soient superposés)
+            police.x = 800;
+            police.y = 240;
+
+
+             //objet police (LE BAS DE SON CORPS POUR COLLISIONS)
+             let policeBas = {
+                img: new Image(), //Image
+                urlImage: "images/policeBas_Gauche.png", //Liens vers l'image du bas du corps du policier, qui acceptera les collisions
+                x: 1000, //position x, au départ du bas du policier(pour superposition avec le reste du personnage)
+                y: 360, //position y, au départ du bas du policier(pour superposition avec le reste du personnage)
+                largeur: 120, //Largeur d'une vignette issue du "sprite sheet" du bas du policier
+                hauteur: 62, //hauteur de la vignette du "sprite sheet du bas du policier"
+                indexVignette: 0, //première vignette
+                nbVignettes: 7, //nombre total de vignettes
+                sourceX: 0, //Coordonnées x de la vignette à afficher
+                vitesseX: 3, //vitesse sur l'axe des x
+                vitesseY: 2, //vitesse sur l'axe des y
+            }
+
+            //Charger le Bas du policier
+            policeBas.img.src = policeBas.urlImage;
+
+            //Position x et y du bas du policier au départ 
+            policeBas.x = police.x;
+            policeBas.y = police.y + 85;
+
+            //charger l'image des patates
+            patate.img.src = patate.urlImage;
+
+            //Objet pour gérer les touches fléchées du clavier (Toutes à "false" pour que, lorsqu'on appuie sur les touches indiquées, le déplacement devienne "true")
+              let fleches = {
+                gauche: false,
+                droite: false,
+                haut: false,
+                bas: false,
+            }
+
+            //Tableau pour faire apparaître les bombes dans le canvas
+            lesBombes = []; 
+
+            //Le nombre de patates amassées (AKA score du joueur)
+            let score = 0;
+            
+            //Variable pour la fin du jeu où le joueur perds, qui est à false jusqu'à ce qu'il y ait collision avec la police
+            let joueurPerds = false;
+
+            //variable pour la fin de la partie si le joueur gagne
+            let joueurGagne = false;
+
+            //Nombre de vies du joueur au départ
+            let vies = 1;
+
+            //Musique de début de jeu
+            let musique = new Audio("sons/duelingBanjo_Remix.mp3");
+
+            //Audio si le joueur perds
+            let audio_Defaite = new Audio("sons/redneck_Arrete.mp3");
+
+            //Audio si le joueur gagne la partie
+            let yeehaw = new Audio("sons/yeehaw.mp3");
+
+            //Audio si on se fait frapper par une bombe
+            let sonBombe = new Audio("sons/flashbang.wav");
+
+            //Son de l'explosion de la bombe lorsqu'on se fait toucher par celle-ci
+            let sonExplosion = new Audio("sons/explosion.ogg");
+
+            ////////////////////////////// DÉMARRAGE ET ÉVÉNEMENTS DU JEU //////////////////////////////////
+
+            //On déclare la variable de l'interval pour l'actualisation du jeu
+            let intervalJeuID;
+
+            //Déclaration de la varible pour l'actualisation de l'image du sprite "Redneck"
+            let intervalRedneck;
+
+            //Déclaration de la varible pour l'actualisation de l'image du sprite "police"
+            let intervalPolice;
+            
+             //Déclaration de la varible pour l'intervale des images des bombes
+            let intervalBombesID;
+
+            //Écouteur sur le document pour détecter si des touches de clavier sont appuyées ou relâchées
+            document.addEventListener("keyup", commencerLeJeu);
+         
+            /////////////////////////// LES FONCTIONS ////////////////////////////////////////////////////////////
+            ////////////////////////////FONCTIONS DE L'INTRO///////////////////////////////////////
+
+             //Affichage de la page d'intro du jeu
+            leCanvas.style.backgroundImage = "url('images/Intro_RedneckMania.png')";
+            
+            //Appel de la fonction qui démarre l'introduction du jeu
+            function commencerLeJeu(){
+
+                //Si le joueur appuie sur la touche "espace", on commence la partie
+                if(event.keyCode == 32){
+                    //Retrait de la commande "espace" pour commencer le jeu
+                    document.removeEventListener("keyup", commencerLeJeu);
+
+                    //Écouteur sur le document pour détecter si des touches de clavier sont appuyées ou relâchées
+                    document.addEventListener("keydown", presserTouche);
+                    document.addEventListener("keyup", relacherTouche);
+
+                    //Affichage de l'arrière-plan du <canvas> pour le jeu
+                    leCanvas.style.backgroundImage = 'url("images/paysageFerme.png")';
+
+                    //affichage des consignes
+                    alert("utilise les touches ← → ↑ ↓ pour te déplacer! Ramasse 30 patates pour gagner!");
+
+                    //L'intervalle pour le jeu
+                    intervalJeuID = setInterval(actualisationJeu, 1000/60);
+
+                    //L'intervale à laquelle les bombes vont tomber 
+                    intervalBombesID = setInterval(mettreUneBombe, 1000);
+                }
+                
+           //////////////////////////FONCTIONS DU JEU////////////////////////////////////////////
+
+            //Actualiser l'affichage des objets et les actions du jeu
+            function actualisationJeu(){
+                
+                //On retire l'écoute d'évènement pour commencer le jeu (le relâchement de la barre espace)
+                document.removeEventListener("keyup", commencerLeJeu);
+
+                //Effacer le contenu actuel du contexte de rendu du canvas
+                ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+
+                //Faire jouer la musique
+                jouerMusique();
+
+                //Afficher le score en haut à gauche
+                afficherScore();
+
+                //Dessin des patates
+                ctx.drawImage(patate.img, patate.x, patate.y);
+
+                //Déplacer le personnage
+                deplacerRedneck(200, 250, leCanvas.width/2, leCanvas.height/2);
+
+                //Fonction pour déplacer le policier
+                deplacerPolice();
+
+                //Pour lancer la fonction du déplacement des bombes suivantes
+                deplacerLesBombes();
+
+
+ /////////////////////////////////////////SECTION DÉTECTION DES COLLISIONS////////////////////////////////////////////////////////////////
+
+/*---------------------------------Détection des collisions entre le perso et les patates---------------------------------------------*/
+
+                //Variable pour les collisions entre les patates et le redneck
+                let collisionRedneckBasPatate = detecterCollision(redneckBas, patate);
+
+                //Gestion de ce qui doit arriver si le redneck entre en collision avec une patate
+                if (collisionRedneckBasPatate) {
+                //Modifier la position en Y au hasard de la patate dans les limites du canvas
+                let patate_Ymax = Math.ceil(Math.random() * (460-350+1)+350)
+
+              //Modifier la position en X au hasard de la patate dans les limites du canvas                
+                patate.x = Math.random() * (leCanvas.width - patate.largeur);
+
+                //Modifier la position en Y au hasard de la patate dans les limites du canvas
+                patate.y = patate_Ymax;
+
+                //Modifier la source de l'image patate
+                patate.img.src = "images/patate.png";
+
+                //Augmenter de 1 le score pour le nombre de patates ramassés
+                score += 1;
+                }        
+
+                //Conditions pour gagner le jeu
+                if (score == 30){
+                    //Condition pour gagner la partie devient vraie
+                    joueurGagne = true;
+
+                    //On arrête les animations
+                    clearInterval(intervalJeuID);
+                    clearInterval(intervalBombesID);
+                    clearInterval(intervalPolice);
+                    clearInterval(intervalRedneck);
+
+                    //On efface le Canvas
+                    ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+                }
+                
+                //Gain de la partie si le joueur obtient 30 patates
+                if (joueurGagne == true){
+                    //On arrête la musique 
+                    musique.pause();
+
+                    //Image de fin si le joueur gagne
+                    leCanvas.style.backgroundImage = 'url("images/imageFinGagne.png")';
+
+                    yeehaw.play();
+
+                    //Ajout évènement pour recommencer le jeu (appuyer sur la touche "r")
+                    document.addEventListener("keyup", recommencerJeu);
+                    }
+
+/*--------------------------------Detection de collision avec la police et déclaration des règles pour perdre la partie----------------------------------*/
+
+                //La variable pour détecter les collisions entre les personnages (le bas de le corps accepte les collisions)
+                let collisionRedneckPolice = detecterCollisionPerso(redneckBas, policeBas);
+
+                if (collisionRedneckPolice){
+                    //On perd une vie si collision avec la police
+                    vies--;
+                    
+                    //Si on a plus de vie 
+                    if (vies == 0){
+
+                    //On détermine que les exigences pour perdre la partie son vraies
+                    joueurPerds = true;
+
+                    //On arrête les animations
+                    clearInterval(intervalJeuID);
+                    clearInterval(intervalBombesID);
+                    clearInterval(intervalPolice);
+                    clearInterval(intervalRedneck);
+
+                    //On efface le Canvas
+                    ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+            }
+
+                //Si collision  avec le policier est vraie
+                //Affichage du texte de fin de jeu et du score
+                if (joueurPerds == true){
+                    //On arrête la musique 
+                    musique.pause();
+                    
+                    //styles du texte
+                    ctx.font = "bold 60px Calibri";
+                    ctx.textBaseline = "top";
+                    ctx.textAlign = "right";
+                    ctx.fillStyle = "red";
+                    ctx.fillText("Vous avez perdus!", leCanvas.width/1.35, leCanvas.height/6);
+                    ctx.fillText("Vous avez amassés " + score + " patates", leCanvas.width/1.14, leCanvas.height/3.5);
+
+                    //styles du texte
+                    ctx.font = "bold 20px Calibri";
+                    ctx.textBaseline = "top";
+                    ctx.textAlign = "right";
+                    ctx.fillStyle = "red";
+                    ctx.fillText("Appuyez sur la touche 'r' pour recommencer ", leCanvas.width/1.4, leCanvas.height/2);
+
+                    audio_Defaite.play();
+
+                    //Ajout évènement pour recommencer le jeu (appuyer sur la touche "r")
+                    document.addEventListener("keyup", recommencerJeu);
+                }
+            }
+
+/////////////////////////////////////////////DÉBUT DES FONCTIONS DE MOUVEMENTS, TEXTES, DÉTECTION DES COLLISIONS ET SONS/////////////////////////////////////////////////////////////////////
+
+            /*Fonction qui recommence le jeu*/
+            function recommencerJeu(){
+                if (event.keyCode == 82){
+                    clearInterval(intervalJeuID);
+                    location.reload(true);
+                }
+            }
+
+                //Fonction pour déplacer et dessiner le redneck
+                function deplacerRedneck() {
+                //Calculer les futures positions du redneck et définir la feuille de sprites à afficher
+                //À Droite
+                if (fleches.droite) {
+                    redneck.x += redneck.vitesseX;
+                    redneckBas.x += redneckBas.vitesseX;
+                    redneck.img.src = "images/redneck_CourseDroite.png";
+                    redneckBas.img.src = "images/redneck_CourseDroite_Bas.png";
+                }
+
+                //À Gauche
+                if (fleches.gauche) {
+                    redneck.x -= redneck.vitesseX;
+                    redneckBas.x -= redneckBas.vitesseX;
+                    redneck.img.src = "images/redneck_Coursegauche.png";
+                    redneckBas.img.src = "images/redneck_Coursegauche_Bas.png";
+                }
+
+                //En Haut
+                if (fleches.haut){
+                    redneck.y -= redneck.vitesseY;
+                    redneckBas.y -= redneckBas.vitesseY;
+                }
+
+                //En Bas
+                if (fleches.bas){
+                    redneck.y += redneck.vitesseY;
+                    redneckBas.y += redneckBas.vitesseY;
+                }
+     
+                //Si le redneck touche un des côtés du Canvas on l'empêche de sortir et on le force à revenir sur ses pas
+                //À droite
+                if (redneck.x > leCanvas.width) {
+                    redneck.x = -redneck.largeur;
+                }
+                //À gauche
+                if (redneck.x < -redneck.largeur) {
+                    redneck.x = leCanvas.width;
+                }
+
+                //Limites du canvas en haut et en bas pour le personnage
+                let yMax = leCanvas.height - redneck.hauteur;
+
+                //Limite Haut
+                if (redneck.y < yMax/1.5){
+                    redneck.y = yMax/1.5;
+                }
+
+                //Limite Bas
+                if (redneck.y > yMax){
+                    redneck.y = yMax;
+                }
+
+                //limite Gauche
+                if (redneckBas.x > leCanvas.width) {
+                    redneckBas.x = -redneckBas.largeur;
+                }
+
+                //Limite Droite
+                if (redneckBas.x < -redneckBas.largeur) {
+                    redneckBas.x = leCanvas.width;
+                }
+
+                //YMax pour le bas du redneck
+                let yMaxBas = leCanvas.height - redneckBas.hauteur;
+
+                //Limite Haut du bas de l'image du personnage
+                if (redneckBas.y < yMaxBas/1.375){
+                    redneckBas.y = yMaxBas/1.375;
+                }
+
+                //Limite Bas du bas de l'image du personnage
+                if (redneckBas.y > yMaxBas/0.997){
+                    redneckBas.y = yMaxBas/0.997;
+                }
+
+                //Dessiner le redneck
+                ctx.drawImage(redneck.img, redneck.sourceX, 0, redneck.largeur, redneck.hauteur, redneck.x, redneck.y, redneck.largeur, redneck.hauteur);
+
+                //Dessiner le bas du redneck
+                ctx.drawImage(redneckBas.img, redneckBas.sourceX, 0, redneckBas.largeur, redneckBas.hauteur, redneckBas.x, redneckBas.y, redneckBas.largeur, redneckBas.hauteur);           
+            }
+
+         }
+
+            //Fonction pour gérer la vignette à afficher pour l'animation du personnage
+            intervalRedneck = setInterval(gererImageDuRedneck, 1000/12);
+
+            function gererImageDuRedneck() {
+                //Définir la coordonnée sourceX de la vignette à afficher
+                redneck.sourceX = redneck.indexVignette * redneck.largeur;
+
+                //Incrémenter et gérer l’index de la prochaine vignette à afficher
+                redneck.indexVignette += 1;
+
+                if (redneck.indexVignette == redneck.nbVignettes) {
+                    redneck.indexVignette = 0;
+                }
+            }
+
+              //Fonction pour gérer la vignette à afficher pour l'animation du bas du personnage
+              setInterval(gererImageDuRedneckBas, 1000/12);
+
+            function gererImageDuRedneckBas() {
+                //Définir la coordonnée sourceX de la vignette à afficher
+                redneckBas.sourceX = redneckBas.indexVignette * redneckBas.largeur;
+
+                //Incrémenter et gérer l’index de la prochaine vignette à afficher
+                redneckBas.indexVignette += 1;
+
+                if (redneckBas.indexVignette == redneckBas.nbVignettes) {
+                        redneckBas.indexVignette = 0;
+                }
+            }
+
+            //Fonction pour déplacer et dessiner le policier
+            function deplacerPolice() {
+                //Déplacement vertical de droite à gauche
+                police.x -= police.vitesseX;
+                policeBas.x -= policeBas.vitesseX;
+
+                police.y += police.vitesseY;
+                policeBas.y = police.y + 85;
+
+                //Le policier pars de la gauche du Canvas et reviens et vice-versa
+                //Gauche à droite
+                if (police.x < 0){
+                    police.vitesseX *= -1;
+                    policeBas.vitesseX *= -1;
+                    police.img.src = "images/policeDroite.png";
+                    policeBas.img.src = "images/policeBas.png";
+                }
+
+               //Droite à gauche
+                if(police.x > leCanvas.width - police.largeur){
+                    police.vitesseX *= -1;
+                    policeBas.vitesseX *= -1;
+                    police.img.src = "images/police.png";
+                    policeBas.img.src = "images/policeBas_Gauche.png"
+                }
+
+                let yMaxPolice = leCanvas.height - police.hauteur;
+
+                //limite Canvas
+                //Bas
+                if(police.y > yMaxPolice || police.y < 0){
+                    police.vitesseY *= -1;
+                }
+
+                //Haut
+                if(police.y < yMaxPolice/1.5 ){
+                    police.vitesseY *= -1;
+                }
+
+            //--Dessin du haut et bas de l'image de la police--
+            ctx.drawImage(police.img, police.sourceX, 0, police.largeur, police.hauteur, police.x, police.y, police.largeur, police.hauteur);
+            ctx.drawImage(policeBas.img, policeBas.sourceX, 0, policeBas.largeur, policeBas.hauteur, policeBas.x, policeBas.y, policeBas.largeur, policeBas.hauteur);
+            }
+            
+            //L'intervalle de rafraîchissement de la police
+            intervalPolice = setInterval(gererImagePolice, 1000/12);
+
+            //On gère le sprite sheet du policier et l'affichage des vignettes
+            function gererImagePolice() {
+                police.sourceX = police.indexVignette * police.largeur;
+                police.indexVignette += 1;
+
+                if(police.indexVignette == police.nbVignettes){
+                    police.indexVignette = 0;
+                }
+            }
+
+            //On fait la même chose pour le bas de l'image de la police (gestion sprite sheet et de l'intervalle)
+            setInterval(gererImagePoliceBas, 1000/12);
+
+            function gererImagePoliceBas() {
+                policeBas.sourceX = policeBas.indexVignette * policeBas.largeur;
+                policeBas.indexVignette += 1;
+
+                if(policeBas.indexVignette == policeBas.nbVignettes){
+                    policeBas.indexVignette = 0;
+                }
+            }
+            }
+
+/////////////////////////////////Fonction pour placer une première bombe////////////////////////////////////////
+                //Pour placer une première bombe
+                function mettreUneBombe(){
+
+                    //Objet Bombe
+                    let bombe = {
+                    img: new Image(),
+                        urlImage: "images/bombe.png",
+                        x: entierHasard(0, leCanvas.width-50),
+                        y: -50,
+                        largeur: 50,
+                        hauteur: 50,
+                        vitesseY: entierHasard(3, 7),        
+                    };
+
+                    //Chargement de l'image
+                    bombe.img.src = bombe.urlImage;
+                    //Mettre les bombes dans le tableau
+                    lesBombes.push(bombe);
+                    }
+
+////////////////////////Fonction pour faire tomber les bombes////////////////////////////////////////////
+                function deplacerLesBombes(){
+
+                    //On prends une bombe dans le tableau contenant toutes les bombes présentes sur le canvas
+                    for (let uneBombe of lesBombes){
+                        //Déclaration de la variable pour détecter les collisions avec les bombes
+                        let collisionRedneckBombe = detecterCollision(redneck, uneBombe);
+                        
+                        //On donne leur vitesse y à chaque bombe
+                        uneBombe.y += uneBombe.vitesseY;
+
+                        //on déssine les bombes
+                        ctx.drawImage(uneBombe.img, uneBombe.x, uneBombe.y);
+
+                        //Si une bombe dépasse la hauteur maximale du canvas
+                        if(uneBombe.y > leCanvas.height){
+
+                            //On indexe une bombe parmies lesBombes
+                            let index = lesBombes.indexOf(uneBombe);
+
+                            //On retire la bombe indexée avec "splice"
+                            lesBombes.splice(index, 1);
+                        }
+
+                        //Si le redneck entre en collision avec une des bombes
+                        if (collisionRedneckBombe){
+                        //le redneck perds une vie
+                        vies--;
+                        
+                        //Si on a plus de vie 
+                        if (vies == 0){
+
+                        //On détermine que les exigences pour perdre la partie son vraies
+                        joueurPerds = true;
+                        
+                        //Son de la bombe qui explose lorsqu'on entre en contact avec celle-ci
+                        sonExplosion.play();
+                        
+                        //Son acouphène lorsque frappé par la bombe
+                        sonBombe.play();
+
+                        //On arrête les animations
+                        clearInterval(intervalJeuID);
+                        clearInterval(intervalBombesID);
+                        clearInterval(intervalPolice);
+                        clearInterval(intervalRedneck);
+
+                        //On efface le Canvas
+                        ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+                        }
+
+                /*Fonction qui recommence le jeu (On la redéclare pour les collisions avec les bombes)*/
+                function recommencerJeu(){
+                    if (event.keyCode == 82){
+                        clearInterval(intervalJeuID);
+                        location.reload(true);
+                    }
+                }
+
+                    //Affichage du texte de fin de jeu et du score
+                    if (joueurPerds == true){
+                        //On arrête la musique 
+                        musique.pause();
+                        
+                        //styles du texte
+                        ctx.font = "bold 60px Calibri";
+                        ctx.textBaseline = "top";
+                        ctx.textAlign = "right";
+                        ctx.fillStyle = "red";
+                        ctx.fillText("Vous avez perdus!", leCanvas.width/1.35, leCanvas.height/6);
+                        ctx.fillText("Vous avez amassés " + score + " patates", leCanvas.width/1.14, leCanvas.height/3.5);
+
+                        //styles du texte
+                        ctx.font = "bold 20px Calibri";
+                        ctx.textBaseline = "top";
+                        ctx.textAlign = "right";
+                        ctx.fillStyle = "red";
+                        ctx.fillText("Appuyez sur la touche 'r' pour recommencer ", leCanvas.width/1.4, leCanvas.height/2);
+
+                        //Le son de fin si le joueur perds la partie
+                        audio_Defaite.play();
+
+                        //Ajout évènement pour recommencer le jeu (appuyer sur la touche "r")
+                        document.addEventListener("keyup", recommencerJeu);
+                    }
+                        }
+                    }
+                    }
+                
+                
+
+            //Fonction pour calculer un nombre entier au hasard entre 2 valeurs
+            function entierHasard(nbMin, nbMax) {
+                let intervalle = nbMax - nbMin;
+                return nbMin + Math.round(Math.random() * intervalle);
+             }
+
+            //Fonction pour faire Jouer la musique ("dueling banjo" du film "Délivrance") 
+                function jouerMusique(){
+                musique.loop = true;
+                musique.play();
+                if(joueurPerds == true || joueurGagne == true){
+                    musique.pause();
+                }
+            }
+
+            //Affichage du score du joueur
+            function afficherScore() {
+                //Styles du texte
+                ctx.font = "bold 32px Calibri";
+                ctx.textBaseline = "top";
+                ctx.textAlign = "right";
+                ctx.fillStyle = "red";
+                ctx.fillText("Patates : " + score, leCanvas.width/6, leCanvas.height/30);
+            }
+
+            //Détecte quelles touches sont appuyées pour les mouvement du joueur
+            function presserTouche(event) {
+                console.log(event.keyCode);
+                event.preventDefault();
+                //Enregistrer si une touche gauche/droite est pressée
+                if (event.keyCode == 39) {
+                    //flèche droite
+                    fleches.droite = true;
+                }
+
+                if (event.keyCode == 37) {
+                    //flèche gauche
+                    fleches.gauche = true;
+                }
+
+                //Enregistrer si une touche haut/bas est pressée
+                if(event.keyCode == 38){
+                    //flèche Haut
+                    fleches.haut = true;
+                }
+
+                if(event.keyCode == 40){
+                    //flèche Bas
+                    fleches.bas = true;
+                }
+            }
+
+            // Détecte quelles touches sont relâchées
+            function relacherTouche(event) {
+                console.log(event.keyCode);
+                event.preventDefault();
+                //Enregistrer si une touche gauche/droite est relâchée
+                if (event.keyCode == 39) {
+                    //flèche droite
+                    fleches.droite = false;
+                    redneck.img.src = "images/redneck_Repos.png";
+                    redneckBas.img.src = "images/redneck_Repos_Bas.png";
+                }
+                if (event.keyCode == 37) {
+                    //flèche gauche
+                    fleches.gauche = false;
+                    redneck.img.src = "images/redneck_ReposGauche.png";
+                    redneckBas.img.src = "images/redneck_ReposGauche_Bas.png";
+                }
+
+                //Enregistrer si une touche haut/bas est relâchée
+                if(event.keyCode == 38){
+                    //flèche Haut
+                    fleches.haut = false;
+                }
+                if(event.keyCode == 40){
+                    //flèche Bas
+                    fleches.bas = false;
+                }
+            }
+
+            //////////////////////FONCTION POUR COLLISIONS//////////////////////////////////////////////
+
+            function detecterCollision(rectangle1, rectangle2) {
+                if (rectangle1.x < rectangle2.x + rectangle2.largeur && rectangle1.x + rectangle1.largeur/1.5 > rectangle2.x && rectangle1.y < rectangle2.y + rectangle2.hauteur/2 && rectangle1.y + rectangle1.hauteur/2 > rectangle2.y) {
+                    return true;
+                    } else {
+                    return false;
+                    }
+                    }
+
+            function detecterCollisionPerso(rectangle1, rectangle2) {
+                if (rectangle1.x < rectangle2.x + rectangle2.largeur/2 && rectangle1.x + rectangle1.largeur/2 > rectangle2.x && rectangle1.y < rectangle2.y + rectangle2.hauteur/2 && rectangle1.y + rectangle1.hauteur/2 > rectangle2.y) {
+                    return true;
+                    } else {
+                    return false;
+                    }
+                    }
+            
+
+        </script>
+    </body>
+</html>
+
